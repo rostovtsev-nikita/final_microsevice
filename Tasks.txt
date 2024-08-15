@@ -1,0 +1,106 @@
+Разбиваем исходное задание на соответствующие мини-задания, иными словами декомпозиция
+
+1) Создание АПИ-токенов без спецсимволов, использование алгоритма хэширования SHA-3 512
+2) Написание уникального парсера, расстояние Левенштейна(жесть математика, но хотя бы не написание вручную rb-деревьев) 
+3) Соединение заданий в общий файл, создание микросервиса
+
+
+^
+|
+|
+Верхнее закончено
+
+Задание разбиваем на несколько таск
+1) перевод файла в удобный формат, выбрал csv
+2) отфильтровывать данные по столбцам ДД ММ Квартал NN ГГГГ, сделано поправлено кучу раз
+3) Заносить эти данные в постгрю, учитывая особенности(если данные одинаковы, то менять не надо, если различаются, то менять, нет данных заносить в таблицу), считать количество обновлений, удалений, вставок
+4) import os
+import psycopg2
+import pandas as pd
+
+# Функция для подключения к базе данных PostgreSQL
+def connect_to_db():
+    try:
+        conn = psycopg2.connect(
+            host="localhost",
+            port="5432",
+            database="your_database_name",
+            user="your_username",
+            password="your_password"
+        )
+        return conn
+    except psycopg2.Error as e:
+        print("Ошибка при подключении к базе данных PostgreSQL:", e)
+        return None
+
+# Функция для создания таблиц
+def create_tables(conn):
+    try:
+        with conn.cursor() as cur:
+            cur.execute('''
+                CREATE TABLE IF NOT EXISTS group_cde (
+                    road VARCHAR(255),
+                    ard NUMERIC,
+                    avgd NUMERIC,
+                    accord NUMERIC
+                );
+            ''')
+            cur.execute('''
+                CREATE TABLE IF NOT EXISTS group_fgh (
+                    road VARCHAR(255),
+                    ard NUMERIC,
+                    avgd NUMERIC,
+                    accord NUMERIC
+                );
+            ''')
+            cur.execute('''
+                CREATE TABLE IF NOT EXISTS group_ijk (
+                    road VARCHAR(255),
+                    ard NUMERIC,
+                    avgd NUMERIC,
+                    accord NUMERIC
+                );
+            ''')
+            cur.execute('''
+                CREATE TABLE IF NOT EXISTS group_lmn (
+                    road VARCHAR(255),
+                    ard NUMERIC,
+                    ikh_avgd NUMERIC,
+                    accord NUMERIC
+                );
+            ''')
+            conn.commit()
+    except psycopg2.Error as e:
+        print("Ошибка при создании таблиц:", e)
+        conn.rollback()
+
+# Функция для загрузки данных из CSV в PostgreSQL
+def load_data_to_db(conn, csv_file, table_name):
+    try:
+        df = pd.read_csv(csv_file)
+        with conn.cursor() as cur:
+            for _, row in df.iterrows():
+                cur.execute(f'''
+                    INSERT INTO {table_name} (road, ard, avgd, accord)
+                    VALUES (%s, %s, %s, %s);
+                ''', tuple(row))
+        conn.commit()
+    except psycopg2.Error as e:
+        print(f"Ошибка при загрузке данных из {csv_file} в таблицу {table_name}:", e)
+        conn.rollback()
+
+# Основной код
+conn = connect_to_db()
+if conn:
+    create_tables(conn)
+    
+    # Загрузка данных из CSV файлов в соответствующие таблицы
+    csv_directory = "путь_к_вашему_csv_директорию"
+    load_data_to_db(conn, os.path.join(csv_directory, "Group_CDE.csv"), "group_cde")
+    load_data_to_db(conn, os.path.join(csv_directory, "Group_FGH.csv"), "group_fgh")
+    load_data_to_db(conn, os.path.join(csv_directory, "Group_IJK.csv"), "group_ijk")
+    load_data_to_db(conn, os.path.join(csv_directory, "Group_LMN.csv"), "group_lmn")
+    
+    conn.close()
+else:
+    print("Не удалось подключиться к базе данных.")
